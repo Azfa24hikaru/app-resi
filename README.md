@@ -1,19 +1,41 @@
 # ResiKu — Inventory & Shipping Label App
 
-Frontend aplikasi **Pencatat Barang & Generator Resi Pengiriman** (sesuai PRD resi.md) yang dibangun dengan:
+Aplikasi full-stack **Pencatat Barang & Generator Resi Pengiriman** (sesuai PRD resi.md) yang dibangun dengan:
 
-- **Next.js (App Router) + TypeScript**
+- **Next.js 16 (App Router) + TypeScript + React 19**
 - **Tailwind CSS v4** (mobile-first)
+- **Prisma ORM + PostgreSQL** (embedded lokal / Neon.tech / Supabase)
 - **jsPDF** untuk export PDF (label resi thermal 100×150 mm & rekap laporan A4)
+- **Docker** (multi-stage build, siap deploy)
 
 ## Menjalankan
 
 ```bash
 npm install
+cp .env.example .env   # isi DATABASE_URL (lokal / Neon / Supabase)
+npm run db:start       # PostgreSQL embedded lokal (port 5432)
+npm run db:migrate     # buat tabel via Prisma migrate
+node prisma/seed.js    # (opsional) data demo
 npm run dev
 ```
 
 Buka http://localhost:3000
+
+## Menjalankan dengan Docker
+
+Cara paling cepat — menjalankan 3 service sekaligus (db + migrate + app):
+
+```bash
+docker compose up --build
+```
+
+| Service | Deskripsi |
+| --- | --- |
+| `db` | PostgreSQL 16 (data persistent di volume `pgdata`, port host `5433`) |
+| `migrate` | `prisma migrate deploy` sekali sebelum app start |
+| `app` | Aplikasi Next.js di http://localhost:3000 |
+
+Bisa juga memakai database eksternal (Neon/Supabase): isi `DATABASE_URL` di file `.env`, lalu jalankan `docker compose up app`.
 
 ## Fitur
 
@@ -26,35 +48,51 @@ Buka http://localhost:3000
 
 ## Catatan Arsitektur
 
-- Lapisan data frontend memakai `localStorage` (`src/lib/storage.ts`) dengan struktur tipe yang mengikuti schema Prisma di PRD (`Item`, `InventoryTransaction`, `Receipt`). Untuk integrasi ke backend, ganti `import ... from "./storage"` menjadi `from "./api-client"` (`src/lib/api-client.ts`) — kontrak fungsinya dibuat mirip, hanya saja async.
+- Frontend berkomunikasi dengan backend via `src/lib/api-client.ts` (fetch ke Next.js API Routes), sehingga seluruh data tersimpan di **PostgreSQL** (bukan localStorage).
 - Data wilayah di-fetch dari API publik emsifa dan di-cache agar pemanggilan berulang < 300 ms (PRD §6.2).
 - PDF di-generate di client via `jspdf` (`src/lib/pdf-receipt.ts`, `src/lib/pdf-report.ts`) dengan dynamic import agar bundle awal tetap ringan.
+- Update stok atomik: transaksi IN/OUT dijalankan dalam `prisma.$transaction` dan diverifikasi ulang di level database agar stok tidak pernah minus (PRD §6.4).
 
----
+## Struktur Proyek
 
-## Backend (sesuai PRD §1 & §4)
-
-Backend memakai **Next.js API Routes + Prisma ORM + PostgreSQL** (free tier Neon.tech / Supabase), dengan `prisma.$transaction` untuk menjaga konsistensi stok (PRD §6.4).
-
-### Setup Database
-
-```bash
-cp .env.example .env      # lalu isi DATABASE_URL (Neon/Supabase/lokal)
-npm run db:start          # jalankan PostgreSQL embedded lokal (.pgdata)
-npm run db:migrate        # prisma migrate dev --name init (buat tabel)
-node prisma/seed.js       # (opsional) data demo
-npm run dev
+```
+├── prisma/                  # Schema, migrasi, dan seed database
+├── scripts/                 # Start/stop PostgreSQL embedded lokal
+├── src/
+│   ├── app/
+│   │   ├── api/             # API Routes (items, transactions, receipts, profile)
+│   │   ├── inventory/       # Halaman master barang & transaksi stok
+│   │   ├── resi/            # Halaman generator resi
+│   │   ├── profile/         # Halaman profil pengirim/toko
+│   │   └── page.tsx         # Dashboard
+│   ├── components/          # Komponen UI (AppShell, sections, ui)
+│   └── lib/                 # api-client, validasi, db, wilayah, PDF, dll.
+├── Dockerfile               # Multi-stage build (Next.js standalone + Prisma)
+└── docker-compose.yml       # db + migrate + app
 ```
 
-Perintah database tambahan:
+## Skrip NPM
 
 | Perintah | Fungsi |
 | --- | --- |
+| `npm run dev` | Jalankan development server |
+| `npm run build` / `npm start` | Build production / jalankan production server |
 | `npm run db:start` | Start PostgreSQL embedded (persistent, port 5432) + buat database `resiku` bila belum ada |
 | `npm run db:stop` | Stop PostgreSQL embedded |
+| `npm run db:migrate` | `prisma migrate dev` (buat/terapkan migrasi) |
+| `npm run db:deploy` | `prisma migrate deploy` (terapkan migrasi, untuk production) |
 | `npm run db:studio` | Prisma Studio (GUI database) |
+| `npm run db:generate` | Generate Prisma Client |
 
-> **Catatan Windows:** jika muncul `P1001: Can't reach database server`, pastikan
+---
+
+## Backend & Database (sesuai PRD §1 & §4)
+
+Backend memakai **Next.js API Routes + Prisma ORM + PostgreSQL** (embedded lokal / free tier Neon.tech / Supabase), dengan `prisma.$transaction` untuk menjaga konsistensi stok (PRD §6.4).
+
+### Troubleshooting (Windows)
+
+> Jika muncul `P1001: Can't reach database server`, pastikan
 > (1) `DATABASE_URL` memakai `127.0.0.1` (bukan `localhost` — resolusi IPv6 Prisma
 > kadang gagal di Windows), dan (2) tidak ada variabel lingkungan global
 > `DATABASE_URL` yang menimpa `.env`.
@@ -84,6 +122,7 @@ Perintah database tambahan:
 | DELETE | `/api/receipts/[id]` | Hapus resi |
 | GET | `/api/profile` | Profil pengirim/toko |
 | PUT | `/api/profile` | Simpan profil |
+| GET | `/api/wilayah/*` | Proxy ke [wilayah.id](https://wilayah.id) via rewrite di `next.config.ts` (API wilayah.id tidak mengirim header CORS) |
 
 ### Catatan Schema
 
