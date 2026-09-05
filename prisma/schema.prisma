@@ -1,0 +1,87 @@
+// Schema Prisma sesuai PRD resi.md §4 (Database Schema).
+// Catatan penyesuaian (superset dari PRD, tidak mengubah kontrak inti):
+// - InventoryTransaction mendapat kolom snapshot (sku, itemName, unit) agar riwayat
+//   tetap utuh meskipun master barang berubah/dihapus (dipakai UI frontend).
+// - Receipt mendapat snapshot pengirim & ID wilayah (opsional) agar resi lama
+//   tetap valid dan bisa dimuat ulang ke form saat diedit.
+// - Model Profile menyimpan profil pengirim/toko (fitur frontend /profile).
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Item {
+  id           String                 @id @default(uuid())
+  sku          String                 @unique
+  name         String
+  stock        Int                    @default(0)
+  unit         String // e.g., "pcs", "box"
+  transactions InventoryTransaction[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+}
+
+enum TransactionType {
+  IN
+  OUT
+}
+
+model InventoryTransaction {
+  id       String          @id @default(uuid())
+  itemId   String
+  item     Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type     TransactionType
+  quantity Int
+  notes    String?
+  // Snapshot master barang saat transaksi terjadi
+  sku      String
+  itemName String
+  unit     String
+
+  createdAt DateTime @default(now())
+
+  @@index([itemId])
+  @@index([createdAt])
+}
+
+model Receipt {
+  id            String   @id @default(uuid())
+  receiptNumber String   @unique
+  phoneNumber   String
+  province      String
+  city          String
+  district      String
+  village       String
+  detailAddress String
+  courierName   String
+  // Snapshot pengirim saat resi dibuat (opsional agar resi lama tetap valid)
+  storeName     String?
+  senderName    String?
+  senderPhone   String?
+  senderAddress String?
+  // ID wilayah (wilayah.id) agar resi bisa dimuat ulang ke form saat diedit
+  provinceId    String?
+  cityId        String?
+  districtId    String?
+  villageId     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Profil pengirim/toko (single row, id selalu "default")
+model Profile {
+  id         String   @id @default("default")
+  storeName  String   @default("")
+  senderName String   @default("")
+  phone      String   @default("")
+  address    String   @default("")
+
+  updatedAt DateTime @updatedAt
+}

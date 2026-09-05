@@ -1,0 +1,63 @@
+# ============================================================
+# ResiKu — Docker Compose
+#
+#   docker compose up --build
+#
+# Menjalankan 3 service:
+#   db       — PostgreSQL 16 (data disimpan di volume "pgdata")
+#   migrate  — `prisma migrate deploy` sekali sebelum app start
+#   app      — Aplikasi Next.js di http://localhost:3000
+#
+# Bisa juga memakai database eksternal (Neon/Supabase): set
+# DATABASE_URL di file .env, lalu `docker compose up app`.
+# ============================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: resiku
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432" # diekspos ke host untuk debugging (host pakai 5433 agar tidak bentrok)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d resiku"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      # "db" = hostname service postgres di dalam jaringan compose
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/resiku?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/resiku?schema=public
+      # Override dengan database eksternal (Neon/Supabase) lewat file .env bila perlu:
+      # DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

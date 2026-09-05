@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+
+# Build output (di-generate ulang di dalam image)
+.next
+out
+build
+
+# Data & artefak lokal — JANGAN masuk image
+.pgdata
+*.log
+pg-out.txt
+pg-err.txt
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Secrets — image tidak boleh berisi kredensial
+.env
+.env.local
+
+# Git
+.git
+.gitignore
+
+# Docker itu sendiri
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Lain-lain
+.DS_Store
+README.md
+PRD*.md
