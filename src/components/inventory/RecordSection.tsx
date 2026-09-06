@@ -56,7 +56,7 @@ export default function RecordSection({ items, onChanged }: Props) {
         <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Jenis transaksi">
           {(
             [
-              { value: "IN", label: "Stok Masuk", desc: "Barang keluar dari supplier / produksi", classes: "border-emerald-500 bg-emerald-50 text-emerald-700" },
+              { value: "IN", label: "Stok Masuk", desc: "Barang masuk dari supplier / produksi", classes: "border-emerald-500 bg-emerald-50 text-emerald-700" },
               { value: "OUT", label: "Stok Keluar", desc: "Barang terjual / dikirim", classes: "border-rose-500 bg-rose-50 text-rose-700" },
             ] as const
           ).map((opt) => (
