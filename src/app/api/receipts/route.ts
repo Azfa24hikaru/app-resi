@@ -13,7 +13,8 @@ export async function GET(request: Request): Promise<Response> {
   return handle(async () => {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim();
-    const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 100, 1), 500);
+    const rawLimit = Number(searchParams.get("limit"));
+    const limit = Math.min(Math.max(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100, 1), 500);
 
     const receipts = await db.receipt.findMany({
       where: q
@@ -22,6 +23,8 @@ export async function GET(request: Request): Promise<Response> {
               { receiptNumber: { contains: q, mode: "insensitive" } },
               { detailAddress: { contains: q, mode: "insensitive" } },
               { courierName: { contains: q, mode: "insensitive" } },
+              { phoneNumber: { contains: q, mode: "insensitive" } },
+              { village: { contains: q, mode: "insensitive" } },
             ],
           }
         : undefined,

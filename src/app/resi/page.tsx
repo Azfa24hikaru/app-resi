@@ -43,6 +43,7 @@ export default function ResiPage() {
   const [submitError, setSubmitError] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
+  const [batchError, setBatchError] = useState("");
 
   /* ---------------------- Cascading dropdown wilayah ---------------------- */
 
@@ -294,8 +295,11 @@ export default function ResiPage() {
   async function handleBatchDownload() {
     if (selectedReceipts.length === 0) return;
     setBatchBusy(true);
+    setBatchError("");
     try {
       await downloadBatchReceiptsPdf(selectedReceipts);
+    } catch (e: unknown) {
+      setBatchError(e instanceof Error ? e.message : "Gagal mengunduh PDF batch");
     } finally {
       setBatchBusy(false);
     }
@@ -304,8 +308,11 @@ export default function ResiPage() {
   async function handleBatchPrint() {
     if (selectedReceipts.length === 0) return;
     setBatchBusy(true);
+    setBatchError("");
     try {
       await printBatchReceiptsPdf(selectedReceipts);
+    } catch (e: unknown) {
+      setBatchError(e instanceof Error ? e.message : "Gagal mencetak PDF batch");
     } finally {
       setBatchBusy(false);
     }
@@ -671,6 +678,9 @@ export default function ResiPage() {
                 </Button>
               </div>
             </div>
+            {batchError ? (
+              <p className="rounded-lg bg-rose-50 px-5 py-2.5 text-sm font-medium text-rose-700">{batchError}</p>
+            ) : null}
 
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] text-left text-sm">
