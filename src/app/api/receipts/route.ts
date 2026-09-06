@@ -4,7 +4,6 @@
  * POST : simpan resi ke database. Nomor resi auto-generated jika tidak dikirim
  *        (format: RSI-YYYYMMDD-XXXX, unik).
  */
-import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { handle, jsonError, jsonOk, readJson } from "@/lib/api-response";
 import { validateReceiptInput, validationErrorResponse } from "@/lib/api-validation";
