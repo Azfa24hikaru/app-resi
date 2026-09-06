@@ -8,7 +8,7 @@ Bahasa UI & komentar kode: Bahasa Indonesia.
 ```bash
 npm run db:start    # PostgreSQL embedded lokal :5432 (persistent, tetap jalan setelah script keluar)
 npm run db:migrate  # prisma migrate dev
-node prisma/seed.js # data demo (idempoten untuk item)
+npm run db:seed     # data demo (idempoten untuk item)
 npm run dev         # dev server http://localhost:3000
 npm run db:stop     # hentikan PostgreSQL embedded
 npx prisma migrate status  # cek DB hidup (lebih andal dari `pg_ctl status`)

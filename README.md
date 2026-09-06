@@ -15,7 +15,7 @@ npm install
 cp .env.example .env   # isi DATABASE_URL (lokal / Neon / Supabase)
 npm run db:start       # PostgreSQL embedded lokal (port 5432)
 npm run db:migrate     # buat tabel via Prisma migrate
-node prisma/seed.js    # (opsional) data demo
+npm run db:seed      # (opsional) data demo
 npm run dev
 ```
 
@@ -82,6 +82,7 @@ Bisa juga memakai database eksternal (Neon/Supabase): isi `DATABASE_URL` di file
 | `npm run db:migrate` | `prisma migrate dev` (buat/terapkan migrasi) |
 | `npm run db:deploy` | `prisma migrate deploy` (terapkan migrasi, untuk production) |
 | `npm run db:studio` | Prisma Studio (GUI database) |
+| `npm run db:seed` | Isi data demo (idempoten untuk item) |
 | `npm run db:generate` | Generate Prisma Client |
 
 ---
@@ -107,7 +108,7 @@ Backend memakai **Next.js API Routes + Prisma ORM + PostgreSQL** (embedded lokal
 > `shared_memory_type = windows` (`npm run db:start` menerapkan ini otomatis
 > saat inisialisasi cluster baru). Bila WAL rusak akibat crash sebelumnya,
 > hentikan server (`npm run db:stop`), hapus folder `.pgdata/`, lalu ulangi
-> `npm run db:start` + `npm run db:migrate` + `node prisma/seed.js`.
+> `npm run db:start` + `npm run db:migrate` + `npm run db:seed`.
 >
 > Jika `npm run db:start` tampak berhenti (tidak kembali ke prompt), server
 > biasanya tetap sudah berjalan — cek dengan `npx prisma migrate status` atau
