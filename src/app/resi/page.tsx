@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge, Button, Card, CardHeader, EmptyState, FieldError, Input, Label, Select, Textarea } from "@/components/ui";
 import { COURIERS } from "@/lib/couriers";
@@ -17,6 +17,9 @@ const LOADING_TEXT: Record<Exclude<LoadStage, "">, string> = {
   dist: "Memuat daftar kecamatan…",
   vill: "Memuat daftar desa/kelurahan…",
 };
+
+/** Jumlah resi per halaman riwayat ( sinkron dengan default `limit` API ). */
+const PAGE_LIMIT = 100;
 
 export default function ResiPage() {
   const [receiptNumber, setReceiptNumber] = useState("");
@@ -44,16 +47,48 @@ export default function ResiPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchError, setBatchError] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedQ, setAppliedQ] = useState("");
+  const [hasMore, setHasMore] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
+  /* Penanda request riwayat terakhir — respons basi (mis. ketikan cepat) diabaikan */
+  const listReqId = useRef(0);
 
   /* ---------------------- Cascading dropdown wilayah ---------------------- */
 
-  const refreshList = useCallback(async () => {
+  const loadReceipts = useCallback(async (opts: { q: string; offset: number; append: boolean }) => {
+    const myId = ++listReqId.current;
+    setListLoading(true);
     try {
-      setReceiptsList(await getReceipts());
+      const data = await getReceipts({ q: opts.q || undefined, limit: PAGE_LIMIT, offset: opts.offset });
+      if (listReqId.current !== myId) return; // respons basi — abaikan
+      setReceiptsList((prev) => (opts.append ? [...prev, ...data] : data));
+      setHasMore(data.length === PAGE_LIMIT);
+      if (!opts.append) {
+        // Daftar diganti (search/refresh): buang seleksi batch yg tak lagi tampil
+        setSelectedIds((prevSel) => {
+          const visible = new Set(data.map((d) => d.id));
+          const next = new Set([...prevSel].filter((id) => visible.has(id)));
+          return next.size === prevSel.size ? prevSel : next;
+        });
+      }
     } catch {
-      // Gagal memuat riwayat dari server — daftar tetap kosong.
+      // Gagal memuat riwayat dari server — daftar tetap tampil apa adanya.
+    } finally {
+      if (listReqId.current === myId) setListLoading(false);
     }
   }, []);
+
+  const refreshList = useCallback(
+    () => loadReceipts({ q: appliedQ, offset: 0, append: false }),
+    [loadReceipts, appliedQ],
+  );
+
+  /* Debounce input pencarian riwayat → query server */
+  useEffect(() => {
+    const t = window.setTimeout(() => setAppliedQ(searchInput.trim()), 400);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
 
   useEffect(() => {
     setReceiptNumber(genReceiptNumber());
@@ -62,6 +97,9 @@ export default function ResiPage() {
       .catch(() => {
         // Server belum siap — pengguna tetap bisa mengisi form.
       });
+  }, []);
+
+  useEffect(() => {
     void refreshList();
   }, [refreshList]);
 
@@ -635,8 +673,27 @@ export default function ResiPage() {
       {/* ------------------------------ Riwayat resi ------------------------------ */}
       <Card>
         <CardHeader title="Riwayat Resi" desc="Centang resi untuk mengunduh/mencetak beberapa label sekaligus dalam satu file PDF." />
+        {/* Pencarian server-side: nomor resi, kota/provinsi, ekspedisi, pengirim */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-3">
+          <div className="min-w-52 flex-1">
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Cari nomor resi, kota, ekspedisi, pengirim…"
+              aria-label="Cari riwayat resi"
+            />
+          </div>
+          <p className="text-xs text-slate-500">
+            {listLoading ? "Memuat…" : `${receipts.length} resi tampil`}
+            {appliedQ ? ` untuk “${appliedQ}”` : ""}
+          </p>
+        </div>
         {receipts.length === 0 ? (
-          <EmptyState title="Belum ada resi tersimpan" desc="Isi form di atas lalu klik “Simpan & Generate Resi”." />
+          appliedQ ? (
+            <EmptyState title="Tidak ditemukan" desc={`Tidak ada resi yang cocok dengan “${appliedQ}”.`} />
+          ) : (
+            <EmptyState title="Belum ada resi tersimpan" desc="Isi form di atas lalu klik “Simpan & Generate Resi”." />
+          )
         ) : (
           <>
             {/* Toolbar batch export */}
@@ -761,6 +818,18 @@ export default function ResiPage() {
               </tbody>
             </table>
           </div>
+          {hasMore ? (
+            <div className="flex justify-center border-t border-slate-100 px-5 py-3">
+              <Button
+                variant="secondary"
+                className="!min-h-9 !px-3 !py-1.5 text-xs"
+                disabled={listLoading}
+                onClick={() => loadReceipts({ q: appliedQ, offset: receipts.length, append: true })}
+              >
+                {listLoading ? "Memuat…" : "Muat lebih banyak"}
+              </Button>
+            </div>
+          ) : null}
           </>
         )}
       </Card>

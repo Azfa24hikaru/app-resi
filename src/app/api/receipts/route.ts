@@ -1,6 +1,10 @@
 /**
  * API: /api/receipts — Template & Generator Resi Pengiriman (PRD 3.1)
- * GET  : daftar resi (opsional ?q= nomor resi/nama penerima/alamat)
+ * GET  : daftar resi + pencarian & paginasi:
+ *        ?q=      cari di nomor resi, HP, provinsi, kota, kecamatan, desa,
+ *                 alamat detail, ekspedisi, nama toko/pengirim, telp pengirim
+ *        ?limit=  jumlah data per halaman (default 100, maks 500)
+ *        ?offset= lewati N data pertama (default 0)
  * POST : simpan resi ke database. Nomor resi auto-generated jika tidak dikirim
  *        (format: RSI-YYYYMMDD-XXXX, unik).
  */
@@ -14,21 +18,30 @@ export async function GET(request: Request): Promise<Response> {
     const q = searchParams.get("q")?.trim();
     const rawLimit = Number(searchParams.get("limit"));
     const limit = Math.min(Math.max(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 100, 1), 500);
+    const rawOffset = Number(searchParams.get("offset"));
+    const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
 
     const receipts = await db.receipt.findMany({
       where: q
         ? {
             OR: [
               { receiptNumber: { contains: q, mode: "insensitive" } },
+              { phoneNumber: { contains: q, mode: "insensitive" } },
+              { province: { contains: q, mode: "insensitive" } },
+              { city: { contains: q, mode: "insensitive" } },
+              { district: { contains: q, mode: "insensitive" } },
+              { village: { contains: q, mode: "insensitive" } },
               { detailAddress: { contains: q, mode: "insensitive" } },
               { courierName: { contains: q, mode: "insensitive" } },
-              { phoneNumber: { contains: q, mode: "insensitive" } },
-              { village: { contains: q, mode: "insensitive" } },
+              { storeName: { contains: q, mode: "insensitive" } },
+              { senderName: { contains: q, mode: "insensitive" } },
+              { senderPhone: { contains: q, mode: "insensitive" } },
             ],
           }
         : undefined,
       orderBy: { createdAt: "desc" },
       take: limit,
+      skip: offset,
     });
     return jsonOk(receipts);
   });

@@ -127,7 +127,7 @@ Backend memakai **Next.js API Routes + Prisma ORM + PostgreSQL** (embedded lokal
 | GET | `/api/transactions?from=&to=&type=&q=&itemId=&limit=&offset=` | Riwayat transaksi + filter sesuai PRD 3.2 |
 | POST | `/api/transactions` | Catat IN/OUT — atomik via `$transaction`: insert transaksi (snapshot barang) + update stok; stok OUT diverifikasi di level DB agar tidak pernah minus |
 | GET | `/api/transactions/stats?from=&to=` | Ringkasan Total Masuk / Keluar / Net Movement (untuk Rekap PDF) |
-| GET | `/api/receipts?q=` | Daftar resi |
+| GET | `/api/receipts?q=&limit=&offset=` | Daftar resi + pencarian (nomor, HP, wilayah, ekspedisi, pengirim) & paginasi |
 | POST | `/api/receipts` | Simpan resi; nomor resi auto-generated `RSI-YYYYMMDD-NNNN` bila tidak dikirim |
 | GET | `/api/receipts/[id]` | Detail resi |
 | PUT | `/api/receipts/[id]` | Edit resi |

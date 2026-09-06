@@ -100,9 +100,13 @@ export async function getTransactionStats(filter?: { from?: string; to?: string 
 
 export type ReceiptInput = Omit<Receipt, "id" | "createdAt">;
 
-export async function getReceipts(q?: string): Promise<Receipt[]> {
-  const query = q ? `?q=${encodeURIComponent(q)}` : "";
-  return request<Receipt[]>(`/api/receipts${query}`);
+export async function getReceipts(filter?: { q?: string; limit?: number; offset?: number }): Promise<Receipt[]> {
+  const params = new URLSearchParams();
+  if (filter?.q) params.set("q", filter.q);
+  if (filter?.limit) params.set("limit", String(filter.limit));
+  if (filter?.offset) params.set("offset", String(filter.offset));
+  const query = params.toString();
+  return request<Receipt[]>(`/api/receipts${query ? `?${query}` : ""}`);
 }
 
 export async function saveReceipt(receipt: ReceiptInput): Promise<Receipt> {
