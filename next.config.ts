@@ -2,8 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
-  // Output standalone agar image Docker kecil (.next/standalone berisi server mandiri)
-  output: "standalone",
+  // Output standalone dihapus untuk deploy Vercel (menghindari ENOENT next-server.js.nft.json)
   async rewrites() {
     return [
       {
