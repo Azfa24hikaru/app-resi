@@ -6,7 +6,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, FieldError, Input, Label, 
 import { COURIERS } from "@/lib/couriers";
 import { genReceiptNumber, isValidPhone, normalizePhone } from "@/lib/format";
 import { downloadBatchReceiptsPdf, downloadReceiptPdf, fullAddress, printBatchReceiptsPdf, printReceiptPdf } from "@/lib/pdf-receipt";
-import { deleteReceipt, getProfile, getReceipts, saveReceipt, updateReceipt, type Receipt, type ReceiptInput, type SenderProfile } from "@/lib/api-client";
+import { deleteReceipt, getDropships, getProfile, getReceipts, saveReceipt, updateReceipt, type Dropship, type Receipt, type ReceiptInput, type SenderProfile } from "@/lib/api-client";
 import { getDistricts, getProvinces, getRegencies, getVillages, type Region } from "@/lib/wilayah";
 
 type LoadStage = "" | "prov" | "city" | "dist" | "vill";
@@ -42,6 +42,9 @@ export default function ResiPage() {
   const [receipts, setReceiptsList] = useState<Receipt[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [profile, setProfile] = useState<SenderProfile>({ storeName: "", senderName: "", phone: "", address: "" });
+  const [dropships, setDropships] = useState<Dropship[]>([]);
+  /* Sumber pengirim: "profile" (toko) atau id dropship */
+  const [senderSource, setSenderSource] = useState<string>("profile");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -96,6 +99,11 @@ export default function ResiPage() {
       .then(setProfile)
       .catch(() => {
         // Server belum siap — pengguna tetap bisa mengisi form.
+      });
+    getDropships()
+      .then(setDropships)
+      .catch(() => {
+        // Daftar dropship opsional — form tetap bisa dipakai tanpa dropdown dropship.
       });
   }, []);
 
@@ -180,6 +188,12 @@ export default function ResiPage() {
   const villageName = villages.find((v) => v.id === villageId)?.name ?? "";
   const courierName = COURIERS.find((c) => c.code === courier)?.name ?? "";
 
+  /* Pengirim aktif: profil toko, atau dropship terpilih (nama + telp saja). */
+  const selectedDropship = senderSource === "profile" ? null : (dropships.find((d) => d.id === senderSource) ?? null);
+  const activeSender: SenderProfile = selectedDropship
+    ? { storeName: "", senderName: selectedDropship.name, phone: selectedDropship.phone, address: "" }
+    : profile;
+
   const previewReceipt = useMemo(
     () => ({
       receiptNumber,
@@ -190,12 +204,12 @@ export default function ResiPage() {
       village: villageName,
       detailAddress,
       courierName: courierName || "EKSPEDISI",
-      storeName: profile.storeName,
-      senderName: profile.senderName,
-      senderPhone: profile.phone ? normalizePhone(profile.phone) : "",
-      senderAddress: profile.address,
+      storeName: activeSender.storeName,
+      senderName: activeSender.senderName,
+      senderPhone: activeSender.phone ? normalizePhone(activeSender.phone) : "",
+      senderAddress: activeSender.address,
     }),
-    [receiptNumber, phone, provinceName, cityName, districtName, villageName, detailAddress, courierName, profile],
+    [receiptNumber, phone, provinceName, cityName, districtName, villageName, detailAddress, courierName, activeSender],
   );
 
   /* ------------------------------ Actions ------------------------------ */
@@ -213,7 +227,7 @@ export default function ResiPage() {
     return Object.keys(e).length === 0;
   }
 
-  const hasSender = Boolean(profile.storeName || profile.senderName || profile.phone || profile.address);
+  const hasSender = Boolean(activeSender.storeName || activeSender.senderName || activeSender.phone || activeSender.address);
 
   function buildPayload(): ReceiptInput {
     return {
@@ -225,10 +239,10 @@ export default function ResiPage() {
       village: villageName,
       detailAddress: detailAddress.trim(),
       courierName,
-      storeName: profile.storeName || undefined,
-      senderName: profile.senderName || undefined,
-      senderPhone: profile.phone ? normalizePhone(profile.phone) : undefined,
-      senderAddress: profile.address || undefined,
+      storeName: activeSender.storeName || undefined,
+      senderName: activeSender.senderName || undefined,
+      senderPhone: activeSender.phone ? normalizePhone(activeSender.phone) : undefined,
+      senderAddress: activeSender.address || undefined,
       provinceId,
       cityId,
       districtId,
@@ -256,6 +270,7 @@ export default function ResiPage() {
 
   function handleReset() {
     setEditingId(null);
+    setSenderSource("profile");
     setPhone("");
     setProvinceId("");
     setCityId("");
@@ -305,6 +320,11 @@ export default function ResiPage() {
     setCityId(cid);
     setDistrictId(did);
     setVillageId(vid);
+    // Pulihkan pilihan pengirim: cocokkan snapshot nama+telp ke data dropship.
+    const dropMatch = dropships.find(
+      (d) => d.name === (r.senderName ?? "") && normalizePhone(d.phone) === (r.senderPhone ?? ""),
+    );
+    setSenderSource(dropMatch ? dropMatch.id : "profile");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -373,33 +393,48 @@ export default function ResiPage() {
             desc={editingId ? "Perubahan akan menimpa resi yang ada di riwayat." : "Nomor resi dibuat otomatis dan bisa di-reset kapan saja."}
           />
           <form onSubmit={handleSubmit} noValidate className="space-y-5 p-5">
-            {/* Pengirim — otomatis dari Profil */}
+            {/* Pengirim — pilih profil toko atau dropship */}
             <div className={`rounded-lg border px-4 py-3 text-sm ${hasSender ? "border-slate-200 bg-slate-50" : "border-amber-200 bg-amber-50"}`}>
-              {hasSender ? (
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="text-[10px] font-bold tracking-wider text-slate-500">DARI (PENGIRIM) — DARI PROFIL</p>
-                    <p className="font-semibold text-slate-900">
-                      {[profile.storeName, profile.senderName].filter(Boolean).join(" — ")}
-                    </p>
-                    <p className="text-xs text-slate-600">
-                      {[profile.phone ? `Telp: ${normalizePhone(profile.phone)}` : "", profile.address].filter(Boolean).join(" · ")}
-                    </p>
-                  </div>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="text-[10px] font-bold tracking-wider text-slate-500">DARI (PENGIRIM)</p>
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/profile" className="text-xs font-semibold text-indigo-600 hover:underline">
+                    Kelola Dropship
+                  </Link>
                   <Link href="/profile" className="text-xs font-semibold text-indigo-600 hover:underline">
                     Ubah Profil
                   </Link>
                 </div>
-              ) : (
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-amber-800">
-                    Belum ada profil pengirim — data ini yang tercetak di bagian “DARI” label resi.
-                  </p>
-                  <Link href="/profile" className="text-xs font-semibold text-indigo-600 hover:underline">
-                    Lengkapi Profil
-                  </Link>
+              </div>
+              <div className="mt-2 grid gap-3 sm:grid-cols-[240px_1fr] sm:items-center">
+                <div>
+                  <Label htmlFor="senderSource">Pilih pengirim</Label>
+                  <Select id="senderSource" value={senderSource} onChange={(e) => setSenderSource(e.target.value)}>
+                    <option value="profile">
+                      {[profile.storeName, profile.senderName].filter(Boolean).join(" — ") || "Pengirim utama"} (Toko)
+                    </option>
+                    {dropships.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} — {normalizePhone(d.phone)}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
-              )}
+                {hasSender ? (
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {[activeSender.storeName, activeSender.senderName].filter(Boolean).join(" — ")}
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      {[activeSender.phone ? `Telp: ${normalizePhone(activeSender.phone)}` : "", activeSender.address].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-800">
+                    Belum ada data pengirim — data ini yang tercetak di bagian “DARI” label resi.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">

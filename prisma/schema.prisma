@@ -85,3 +85,17 @@ model Profile {
 
   updatedAt DateTime @updatedAt
 }
+
+/// Daftar dropship (nama + no HP), dikelola di /profile dan dipilih
+/// lewat dropdown pengirim saat membuat resi. Resi menyimpan snapshot
+/// nama/telp ke kolom Receipt.senderName/senderPhone (tanpa FK) agar
+/// riwayat tetap utuh walau data dropship dihapus.
+model Dropship {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}

@@ -31,6 +31,15 @@ export interface SenderProfile {
   address: string;
 }
 
+/** Data dropship (nama + no HP), dikelola di /profile, dipilih saat membuat resi. */
+export interface Dropship {
+  id: string;
+  name: string;
+  phone: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Receipt {
   id: string;
   receiptNumber: string;

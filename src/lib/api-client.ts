@@ -7,9 +7,9 @@
  * di komponen frontend, lalu sesuaikan pemanggilan menjadi `await`.
  */
 
-import type { InventoryTransaction, Item, Receipt, SenderProfile, TransactionType } from "./types";
+import type { Dropship, InventoryTransaction, Item, Receipt, SenderProfile, TransactionType } from "./types";
 
-export type { InventoryTransaction, Item, Receipt, SenderProfile, TransactionType };
+export type { Dropship, InventoryTransaction, Item, Receipt, SenderProfile, TransactionType };
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -131,4 +131,22 @@ export async function getProfile(): Promise<SenderProfile> {
 export async function saveProfile(profile: SenderProfile): Promise<SenderProfile> {
   const p = await request<SenderProfile>("/api/profile", { method: "PUT", body: JSON.stringify(profile) });
   return { storeName: p.storeName, senderName: p.senderName, phone: p.phone, address: p.address };
+}
+
+/* -------------------------------- Dropship -------------------------------- */
+
+export async function getDropships(): Promise<Dropship[]> {
+  return request<Dropship[]>("/api/dropships");
+}
+
+export async function createDropship(input: { name: string; phone: string }): Promise<Dropship> {
+  return request<Dropship>("/api/dropships", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function updateDropship(id: string, input: { name: string; phone: string }): Promise<Dropship> {
+  return request<Dropship>(`/api/dropships/${id}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export async function deleteDropship(id: string): Promise<void> {
+  await request(`/api/dropships/${id}`, { method: "DELETE" });
 }
