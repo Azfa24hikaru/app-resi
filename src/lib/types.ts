@@ -43,6 +43,8 @@ export interface Dropship {
 export interface Receipt {
   id: string;
   receiptNumber: string;
+  /** Nama penerima ("" untuk resi lama yang dibuat sebelum field ini ada) */
+  recipientName: string;
   phoneNumber: string;
   province: string;
   city: string;

@@ -67,6 +67,7 @@ export function validateTransactionInput(input: {
 }
 
 export interface ValidatedReceipt {
+  recipientName: string;
   phoneNumber: string;
   province: string;
   city: string;
@@ -77,6 +78,7 @@ export interface ValidatedReceipt {
 }
 
 export function validateReceiptInput(input: {
+  recipientName?: unknown;
   phoneNumber?: unknown;
   province?: unknown;
   city?: unknown;
@@ -87,6 +89,7 @@ export function validateReceiptInput(input: {
 }): { errors: ValidationErrors; value?: ValidatedReceipt } {
   const errors: ValidationErrors = {};
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const recipientName = str(input.recipientName);
   const phoneNumber = str(input.phoneNumber);
   const province = str(input.province);
   const city = str(input.city);
@@ -95,6 +98,8 @@ export function validateReceiptInput(input: {
   const detailAddress = str(input.detailAddress);
   const courierName = str(input.courierName);
 
+  if (!recipientName) errors.recipientName = "Nama penerima wajib diisi";
+  else if (recipientName.length > 120) errors.recipientName = "Nama penerima maksimal 120 karakter";
   if (!isValidIndonesianPhone(phoneNumber)) errors.phoneNumber = "Nomor HP tidak valid (format Indonesia: 08xx / +628xx)";
   if (!province) errors.province = "Provinsi wajib dipilih";
   if (!city) errors.city = "Kota/Kabupaten wajib dipilih";
@@ -108,6 +113,7 @@ export function validateReceiptInput(input: {
   return {
     errors,
     value: {
+      recipientName,
       phoneNumber: normalizePhone(phoneNumber),
       province,
       city,

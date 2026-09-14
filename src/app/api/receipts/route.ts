@@ -1,8 +1,9 @@
 /**
  * API: /api/receipts — Template & Generator Resi Pengiriman (PRD 3.1)
  * GET  : daftar resi + pencarian & paginasi:
- *        ?q=      cari di nomor resi, HP, provinsi, kota, kecamatan, desa,
- *                 alamat detail, ekspedisi, nama toko/pengirim, telp pengirim
+ *        ?q=      cari di nomor resi, nama penerima, HP, provinsi, kota,
+ *                 kecamatan, desa, alamat detail, ekspedisi,
+ *                 nama toko/pengirim, telp pengirim
  *        ?limit=  jumlah data per halaman (default 100, maks 500)
  *        ?offset= lewati N data pertama (default 0)
  * POST : simpan resi ke database. Nomor resi auto-generated jika tidak dikirim
@@ -26,6 +27,7 @@ export async function GET(request: Request): Promise<Response> {
         ? {
             OR: [
               { receiptNumber: { contains: q, mode: "insensitive" } },
+              { recipientName: { contains: q, mode: "insensitive" } },
               { phoneNumber: { contains: q, mode: "insensitive" } },
               { province: { contains: q, mode: "insensitive" } },
               { city: { contains: q, mode: "insensitive" } },

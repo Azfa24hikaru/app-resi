@@ -93,12 +93,16 @@ function drawReceiptLabel(doc: import("jspdf").jsPDF, r: Receipt): void {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.text("KEPADA:", m, y);
+  if (r.recipientName) {
+    doc.setFontSize(8.5);
+    doc.text(r.recipientName, m, y + 4.5);
+  }
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Telp: ${r.phoneNumber}`, m, y + 4.5);
+  doc.text(`Telp: ${r.phoneNumber}`, m, y + 9);
 
   const addrLines = doc.splitTextToSize(fullAddress(r), W - 2 * m) as string[];
-  let ay = y + 9;
+  let ay = y + 13.5;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   addrLines.forEach((line: string) => {

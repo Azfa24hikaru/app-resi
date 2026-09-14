@@ -52,6 +52,8 @@ model InventoryTransaction {
 model Receipt {
   id            String   @id @default(uuid())
   receiptNumber String   @unique
+  // Nama penerima (wajib diisi saat buat/edit resi; "" untuk resi lama)
+  recipientName String   @default("")
   phoneNumber   String
   province      String
   city          String

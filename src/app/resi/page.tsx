@@ -23,6 +23,7 @@ const PAGE_LIMIT = 100;
 
 export default function ResiPage() {
   const [receiptNumber, setReceiptNumber] = useState("");
+  const [recipientName, setRecipientName] = useState("");
   const [phone, setPhone] = useState("");
   const [provinceId, setProvinceId] = useState("");
   const [cityId, setCityId] = useState("");
@@ -197,6 +198,7 @@ export default function ResiPage() {
   const previewReceipt = useMemo(
     () => ({
       receiptNumber,
+      recipientName: recipientName.trim() || "—",
       phoneNumber: normalizePhone(phone) || "08xx-xxxx-xxxx",
       province: provinceName,
       city: cityName,
@@ -209,13 +211,15 @@ export default function ResiPage() {
       senderPhone: activeSender.phone ? normalizePhone(activeSender.phone) : "",
       senderAddress: activeSender.address,
     }),
-    [receiptNumber, phone, provinceName, cityName, districtName, villageName, detailAddress, courierName, activeSender],
+    [receiptNumber, recipientName, phone, provinceName, cityName, districtName, villageName, detailAddress, courierName, activeSender],
   );
 
   /* ------------------------------ Actions ------------------------------ */
 
   function validate(): boolean {
     const e: Record<string, string> = {};
+    if (!recipientName.trim()) e.recipientName = "Nama penerima wajib diisi";
+    else if (recipientName.trim().length > 120) e.recipientName = "Nama penerima maksimal 120 karakter";
     if (!isValidPhone(phone)) e.phone = "Nomor HP tidak valid. Contoh: 0812-3456-7890";
     if (!provinceId) e.province = "Pilih provinsi";
     if (!cityId) e.city = "Pilih kota/kabupaten";
@@ -232,6 +236,7 @@ export default function ResiPage() {
   function buildPayload(): ReceiptInput {
     return {
       receiptNumber,
+      recipientName: recipientName.trim(),
       phoneNumber: normalizePhone(phone),
       province: provinceName,
       city: cityName,
@@ -271,6 +276,7 @@ export default function ResiPage() {
   function handleReset() {
     setEditingId(null);
     setSenderSource("profile");
+    setRecipientName("");
     setPhone("");
     setProvinceId("");
     setCityId("");
@@ -287,6 +293,7 @@ export default function ResiPage() {
   async function handleEdit(r: Receipt) {
     setEditingId(r.id);
     setReceiptNumber(r.receiptNumber);
+    setRecipientName(r.recipientName ?? "");
     setPhone(r.phoneNumber);
     setDetailAddress(r.detailAddress);
     setCourier(COURIERS.find((c) => c.name === r.courierName)?.code ?? "");
@@ -435,6 +442,19 @@ export default function ResiPage() {
                   </p>
                 )}
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="recipientName">Nama Penerima</Label>
+              <Input
+                id="recipientName"
+                placeholder="Contoh: Siti Aminah"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                aria-invalid={!!errors.recipientName}
+                className={errors.recipientName ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100" : ""}
+              />
+              <FieldError>{errors.recipientName}</FieldError>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
@@ -667,7 +687,8 @@ export default function ResiPage() {
 
             <div className="mt-2 border-t border-slate-200 pt-2">
               <p className="text-[10px] font-bold tracking-wider text-slate-500">KEPADA:</p>
-              <p className="text-sm font-semibold text-slate-900">{previewReceipt.phoneNumber}</p>
+              <p className="text-sm font-semibold text-slate-900">{previewReceipt.recipientName}</p>
+              <p className="text-xs text-slate-600">Telp: {previewReceipt.phoneNumber}</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-800">
                 {fullAddress({
                   detailAddress: previewReceipt.detailAddress || "Alamat detail belum diisi",
@@ -811,7 +832,10 @@ export default function ResiPage() {
                         />
                       </td>
                       <td className="px-5 py-3 font-semibold text-slate-800">{r.receiptNumber}</td>
-                    <td className="px-5 py-3 text-slate-600">{r.phoneNumber}</td>
+                    <td className="max-w-[160px] px-5 py-3">
+                      <p className="truncate font-medium text-slate-700">{r.recipientName || "—"}</p>
+                      <p className="truncate text-xs text-slate-500">{r.phoneNumber}</p>
+                    </td>
                     <td className="max-w-[140px] px-5 py-3">
                       <p className="truncate text-slate-600">{r.storeName || r.senderName || "—"}</p>
                       {r.storeName && r.senderName ? <p className="truncate text-xs text-slate-400">{r.senderName}</p> : null}
